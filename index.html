@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Training">
+<meta name="theme-color" content="#0f0f11">
+<title>Trainingsplan</title>
+<style>
+  :root {
+    --bg: #0f0f11;
+    --bg2: #18181c;
+    --bg3: #222228;
+    --border: rgba(255,255,255,0.09);
+    --text: #f0efe8;
+    --muted: #8a8780;
+    --blue: #4a9eff;
+    --green: #52c97a;
+    --amber: #f0a030;
+    --red: #e8605a;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+    font-size: 16px;
+    min-height: 100vh;
+    overscroll-behavior-y: none;
+    width: 100%;
+    overflow-x: hidden;
+  }
+  .wrap { width: 100%; max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; min-height: 100vh; }
+
+  .header {
+    padding: calc(var(--safe-top) + 14px) 16px 10px;
+    background: var(--bg);
+    position: sticky; top: 0; z-index: 10;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .app-title { font-size: 20px; font-weight: 700; letter-spacing: -0.3px; }
+  .streak { display: flex; align-items: center; gap: 4px; background: var(--bg3); border-radius: 20px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--amber); border: none; }
+
+  .day-tabs {
+    display: flex; gap: 6px; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; padding-bottom: 2px;
+  }
+  .day-tabs::-webkit-scrollbar { display: none; }
+  .day-tab {
+    flex: 0 0 auto; padding: 7px 12px; border-radius: 18px; font-size: 12px; font-weight: 600;
+    border: 0.5px solid var(--border); background: transparent; color: var(--muted);
+    white-space: nowrap;
+  }
+  .day-tab.active { background: var(--text); color: var(--bg); border-color: transparent; }
+  .day-tab.done { border-color: var(--green); color: var(--green); }
+
+  .main { flex: 1; overflow-y: auto; padding: 14px 14px calc(var(--safe-bottom) + 92px); width: 100%; }
+
+  .day-hero { background: var(--bg2); border-radius: 14px; padding: 16px; margin-bottom: 12px; border: 0.5px solid var(--border); }
+  .day-hero-tag { font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 5px; }
+  .tag-kraft { color: var(--blue); }
+  .tag-mobility { color: var(--green); }
+  .tag-athletik { color: var(--amber); }
+  .day-hero-title { font-size: 19px; font-weight: 700; letter-spacing: -0.2px; margin-bottom: 3px; }
+  .day-hero-sub { font-size: 12.5px; color: var(--muted); }
+
+  .section-header { font-size: 10.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); margin: 18px 2px 8px; }
+
+  .exercise-card { background: var(--bg2); border-radius: 12px; border: 0.5px solid var(--border); margin-bottom: 7px; overflow: hidden; width: 100%; }
+  .exercise-card.completed { border-color: var(--green); }
+  .exercise-main { display: flex; align-items: center; gap: 10px; padding: 12px 12px; width: 100%; }
+  .check-circle { width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--border); flex: 0 0 24px; display: flex; align-items: center; justify-content: center; }
+  .exercise-card.completed .check-circle { background: var(--green); border-color: var(--green); }
+  .check-icon { display: none; width: 13px; height: 13px; }
+  .exercise-card.completed .check-icon { display: block; }
+  .exercise-info { flex: 1; min-width: 0; }
+  .exercise-name { font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .exercise-card.completed .exercise-name { color: var(--muted); }
+  .exercise-meta { font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .expand-btn { color: var(--muted); font-size: 16px; flex: 0 0 20px; text-align: center; }
+  .exercise-card.open .expand-btn { transform: rotate(180deg); }
+  .exercise-detail { display: none; padding: 0 12px 12px 46px; font-size: 12.5px; color: var(--muted); line-height: 1.5; border-top: 0.5px solid var(--border); padding-top: 10px; }
+  .exercise-card.open .exercise-detail { display: block; }
+
+  .sets-label { font-size: 11px; color: var(--muted); margin: 10px 0 6px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .sets-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .set-btn { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border); background: transparent; color: var(--muted); font-size: 11.5px; font-weight: 600; }
+  .set-btn.done { background: var(--blue); border-color: var(--blue); color: var(--bg); }
+
+  .warn-box { background: rgba(240,160,48,0.1); border: 0.5px solid rgba(240,160,48,0.25); border-radius: 12px; padding: 11px 13px; margin-bottom: 14px; font-size: 12.5px; color: var(--amber); line-height: 1.5; display: flex; gap: 8px; }
+  .warn-icon { flex: 0 0 auto; font-size: 15px; }
+
+  .bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; justify-content: center;
+    background: var(--bg);
+    border-top: 0.5px solid var(--border);
+    padding: 10px 14px calc(var(--safe-bottom) + 10px);
+    z-index: 10;
+  }
+  .bottom-bar-inner { width: 100%; max-width: 480px; display: flex; gap: 8px; }
+  .finish-btn { flex: 1; background: var(--text); color: var(--bg); border: none; border-radius: 11px; padding: 13px; font-size: 14.5px; font-weight: 700; }
+  .finish-btn:active { opacity: 0.85; }
+  .timer-btn { background: var(--bg3); border: 0.5px solid var(--border); border-radius: 11px; padding: 13px 14px; font-size: 14.5px; font-weight: 600; color: var(--text); min-width: 74px; text-align: center; }
+  .timer-btn.running { color: var(--red); border-color: var(--red); }
+
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 20; }
+  .overlay.open { display: flex; align-items: flex-end; justify-content: center; }
+  .modal { width: 100%; max-width: 480px; background: var(--bg2); border-radius: 18px 18px 0 0; padding: 18px 18px calc(var(--safe-bottom) + 18px); max-height: 70vh; overflow-y: auto; }
+  .modal-handle { width: 36px; height: 4px; background: var(--bg3); border-radius: 2px; margin: 0 auto 16px; }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+  .history-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 0; border-bottom: 0.5px solid var(--border); font-size: 13.5px; }
+  .history-item:last-child { border-bottom: none; }
+  .history-date { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
+  .history-empty { color: var(--muted); font-size: 13.5px; text-align: center; padding: 26px 0; }
+
+  .toast { position: fixed; top: calc(var(--safe-top) + 56px); left: 50%; transform: translateX(-50%) translateY(-16px); background: var(--green); color: var(--bg); padding: 9px 18px; border-radius: 20px; font-size: 13.5px; font-weight: 700; opacity: 0; pointer-events: none; transition: all 0.3s; z-index: 30; white-space: nowrap; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <div class="header-top">
+      <div class="app-title">Training</div>
+      <button class="streak" id="streak-badge">🔥 <span id="streak-num">0</span> Tage</button>
+    </div>
+    <div class="day-tabs" id="day-tabs"></div>
+  </div>
+
+  <div class="main" id="main-content"></div>
+
+  <div class="bottom-bar">
+    <div class="bottom-bar-inner">
+      <button class="timer-btn" id="timer-btn">0:00</button>
+      <button class="finish-btn" id="finish-btn">Einheit abschließen</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="history-overlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Trainingshistorie</div>
+    <div id="history-list"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const PLAN = [
+  {
+    label: "Montag", short: "Mo", title: "Unterkörper Kraft", type: "Kraft",
+    warn: "Kein schweres konventionelles Kreuzheben. RDL nur bis Spannung in den Ischiokruralen – nie rundes Kreuz.",
+    sections: [
+      { name: "Warm-up", exercises: [
+        { name: "Cat-Cow", sets: 2, reps: "10 Wdh", tip: "Langsam, bewusst jeden Wirbel mobilisieren. Im Vierfüßler." },
+        { name: "Hip 90/90 Stretch", sets: 2, reps: "30 Sek/Seite", tip: "Hüftöffner – beide Beine im 90° Winkel auf dem Boden." },
+        { name: "Glute Bridge", sets: 2, reps: "15 Wdh", tip: "Gesäß oben kurz anspannen, LWS nicht überstrecken." },
+      ]},
+      { name: "Haupttraining", exercises: [
+        { name: "Goblet Squat", sets: 4, reps: "8 Wdh", tip: "Hantel vor die Brust, aufrechter Oberkörper. Kniefreundliche Variante mit weniger Rückenbelastung." },
+        { name: "Romanian Deadlift", sets: 4, reps: "8 Wdh", tip: "Hüftdominant, Rücken neutral. Nur bis Spannung in den Ischiokruralen spürbar ist – nie tiefer." },
+        { name: "Bulgarian Split Squat", sets: 3, reps: "10 Wdh/Seite", tip: "Hinteres Bein auf Bank, Knie zieht gerade nach vorne. Stabilität trainieren." },
+        { name: "Hip Thrust", sets: 3, reps: "12 Wdh", tip: "Schultern auf Bank, Hantel auf Hüfte. Oben 1 Sek halten, Gesäß vollständig anspannen." },
+        { name: "Leg Press", sets: 3, reps: "12 Wdh", tip: "Rücken liegt auf – kein Stempeln. Fußposition mittig bis oberes Drittel der Platte." },
+      ]},
+      { name: "Abschluss-Mobility", exercises: [
+        { name: "Piriformis Stretch", sets: 2, reps: "40 Sek/Seite", tip: "Ischiasnerv entlasten. Knöchel auf Knie, sanft nach vorne lehnen." },
+        { name: "Couch Stretch", sets: 2, reps: "40 Sek/Seite", tip: "Hüftbeuger: Knie an Wand, aufrecht halten. Wichtig nach Kniebeugen." },
+        { name: "Child's Pose", sets: 1, reps: "60 Sek", tip: "Lendenwirbelsäule dekomprimieren. Arme weit nach vorne strecken, tief atmen." },
+      ]},
+    ]
+  },
+  {
+    label: "Dienstag", short: "Di", title: "Oberkörper Push + Core", type: "Kraft",
+    warn: "Overhead Press nur sitzend mit neutraler LWS – kein Hohlkreuz. Kein stehender Overhead mit schwerem Gewicht.",
+    sections: [
+      { name: "Warm-up", exercises: [
+        { name: "Thoracic Rotation", sets: 2, reps: "10 Wdh/Seite", tip: "Im Vierfüßler: Hand hinter Kopf, Ellbogen zur Decke. Brustwirbelsäule mobilisieren." },
+        { name: "Band Pull-Apart", sets: 2, reps: "15 Wdh", tip: "Band auf Schulterhöhe, Arme gestreckt auseinanderziehen. Schulterblätter zusammenziehen." },
+        { name: "Dead Bug", sets: 2, reps: "8 Wdh/Seite", tip: "Rücken flach auf Boden, entgegengesetzter Arm/Bein langsam absenken. LWS-sichere Core-Aktivierung." },
+      ]},
+      { name: "Haupttraining", exercises: [
+        { name: "Schrägbank KH Drücken", sets: 4, reps: "8 Wdh", tip: "30–45° Winkel. Schulterblätter zusammenziehen und in die Bank drücken. Ellbogen leicht nach innen." },
+        { name: "Schulterdrücken sitzend (KH)", sets: 3, reps: "10 Wdh", tip: "Sitzend = Rücken unterstützt. Neutrale LWS, kein Hohlkreuz. Ellbogen leicht vor der Körperebene." },
+        { name: "Dips (Maschine/assistiert)", sets: 3, reps: "10 Wdh", tip: "Leichtes Vorneigen für Brust-Fokus. Kontrolliert tief, Schultern nicht vorrollen." },
+        { name: "Kabelzug Trizeps Pushdown", sets: 3, reps: "12 Wdh", tip: "Ellbogen eng am Körper. Rope oder gerade Stange – vollständige Streckung unten." },
+        { name: "Ab Wheel Rollout (kniend)", sets: 3, reps: "8 Wdh", tip: "Anti-Extension Core: LWS-sicher wenn kniend. Bauch anspannen, Hohlkreuz vermeiden." },
+      ]},
+      { name: "Abschluss-Mobility", exercises: [
+        { name: "Pec Minor Stretch", sets: 2, reps: "30 Sek/Seite", tip: "Arm an Türrahmen (90°), sanft nach vorne drehen. Gegenbewegung zum Drücken." },
+        { name: "Lat Stretch (Rack)", sets: 2, reps: "30 Sek/Seite", tip: "Eine Hand am Rack, Hüfte nach außen schieben. Brustwirbelsäule öffnen." },
+        { name: "McKenzie Extension", sets: 2, reps: "10 Wdh", tip: "Auf dem Bauch, Hände unter Schultern, Oberkörper langsam hochdrücken. Lendenentlastung." },
+      ]},
+    ]
+  },
+  {
+    label: "Mittwoch", short: "Mi", title: "Mobility & Beweglichkeit", type: "Mobility",
+    warn: "Kein Schmerz. Alle Übungen im komfortablen Bewegungsbereich. Dieser Tag ist aktive Regeneration.",
+    sections: [
+      { name: "Aktivierung", exercises: [
+        { name: "Leichtes Rad / Spaziergang", sets: 1, reps: "10 Min", tip: "Durchblutung fördern, Gelenke warm werden lassen." },
+      ]},
+      { name: "Mobility-Flow", exercises: [
+        { name: "World's Greatest Stretch", sets: 3, reps: "5 Wdh/Seite", tip: "Ausfallschritt, vordere Hand auf Boden, hintere Hand zur Decke drehen. Ganzkörpermobilisation." },
+        { name: "Hip 90/90 Flow", sets: 3, reps: "8 Wdh/Seite", tip: "Beide Beine im 90° Winkel, langsam von Seite zu Seite wechseln. Hüftgelenkkapsel." },
+        { name: "Quadruped Thoracic Rotation", sets: 3, reps: "10 Wdh/Seite", tip: "Im Vierfüßler: Hand hinter Kopf, Ellbogen zur Decke. Brustwirbelsäule isoliert rotieren." },
+        { name: "Banded Hip Flexor Stretch", sets: 3, reps: "45 Sek/Seite", tip: "Band am Rack befestigt, um Hüfte. Ausfallschritt nach vorne. Tiefer Hüftbeuger-Stretch." },
+        { name: "Pigeon Pose (Yin)", sets: 2, reps: "90 Sek/Seite", tip: "Tiefe Hüftöffnung. Zeit lassen, Muskeln entspannen sich erst nach 60+ Sek." },
+        { name: "Supine Twist", sets: 2, reps: "60 Sek/Seite", tip: "Auf dem Rücken, Knie zur Seite, Arme ausgestreckt. LWS-Dekompression." },
+        { name: "Hamstring Floss (liegend)", sets: 3, reps: "12 Wdh/Seite", tip: "Auf dem Rücken, Band um Fuß, Bein strecken/beugen. Rückenfreundlich." },
+      ]},
+      { name: "Abschluss", exercises: [
+        { name: "Foam Rolling Thorax + Gesäß", sets: 1, reps: "5–8 Min", tip: "Langsam über Bereiche rollen, an Schmerzpunkten 20–30 Sek verweilen." },
+        { name: "Crocodile Breathing", sets: 2, reps: "10 tiefe Atemzüge", tip: "Auf Bauch legen, tief in den Rücken atmen. Diaphragma und Core-Stabilität aktivieren." },
+      ]},
+    ]
+  },
+  {
+    label: "Donnerstag", short: "Do", title: "Oberkörper Pull + Athletik", type: "Athletik",
+    warn: "Beim Klimmzug / Pulldown: keine Überstreckung im Tiefpunkt – Schulterblätter aktiv halten.",
+    sections: [
+      { name: "Warm-up", exercises: [
+        { name: "Face Pulls (Kabel)", sets: 2, reps: "15 Wdh", tip: "Seil auf Augenhöhe, Ellbogen hoch, Hände zum Gesicht. Schulterblatt-Aktivierung." },
+        { name: "Scapula Pull-Ups", sets: 2, reps: "10 Wdh", tip: "An der Stange hängen, nur durch Schulterblätter hoch/runter – keine Ellbogen beugen." },
+        { name: "Cat-Cow + Thread the Needle", sets: 2, reps: "8 Wdh/Seite", tip: "Im Vierfüßler Cat-Cow, dann Arm unter dem Körper durchfädeln. BWS mobilisieren." },
+      ]},
+      { name: "Haupttraining", exercises: [
+        { name: "Klimmzüge / Lat Pulldown", sets: 4, reps: "8 Wdh", tip: "Schulterblätter am Tiefpunkt zusammenziehen, nicht durchhängen. Brustbein zum Griff." },
+        { name: "Seilzug-Rudern (neutraler Griff)", sets: 4, reps: "10 Wdh", tip: "Neutraler Griff = Handgelenke zeigen sich an. Ellbogen nah am Körper zurückziehen." },
+        { name: "Einarmiges KH-Rudern", sets: 3, reps: "10 Wdh/Seite", tip: "Knie und Hand auf Bank. Rücken parallel zum Boden, KH zur Hüfte ziehen." },
+        { name: "Face Pulls", sets: 3, reps: "15 Wdh", tip: "Rotatorenmanschette stärken. Wichtig für Schultergesundheit und aufrechte Haltung." },
+        { name: "Bizep Curl (KH)", sets: 3, reps: "12 Wdh", tip: "Stehend oder sitzend. Ellbogen eng am Körper, keine Schwungbewegung." },
+      ]},
+      { name: "Abschluss-Mobility", exercises: [
+        { name: "Doorway Pec Stretch", sets: 2, reps: "30 Sek", tip: "Arme am Türrahmen (90°), sanft nach vorne lehnen. Brust öffnen nach dem Ziehen." },
+        { name: "Thoracic Extension (Foam Roller)", sets: 2, reps: "30 Sek", tip: "Roller quer unter die Brustwirbelsäule, Hände hinter Kopf, Arme fallen lassen." },
+        { name: "Child's Pose", sets: 1, reps: "60 Sek", tip: "LWS entlasten nach dem Training." },
+      ]},
+    ]
+  },
+  {
+    label: "Freitag", short: "Fr", title: "Athletik & Ganzkörper", type: "Athletik",
+    warn: "Trap Bar Deadlift immer mit neutraler Wirbelsäule. KB-Swings nur wenn Hüftgelenk beschwerdefrei. Gewicht moderat halten.",
+    sections: [
+      { name: "Warm-up", exercises: [
+        { name: "Seitsteps mit Band", sets: 2, reps: "15 Wdh/Seite", tip: "Kleines Band um Knie. Knie nach außen drücken, Gluteus medius aktivieren." },
+        { name: "Hip Hinge (leeres Gewicht)", sets: 2, reps: "10 Wdh", tip: "Bewegungsmuster einprägen. Stab am Rücken anlegen – Kopf, BWS, Gesäß berühren Stab." },
+        { name: "Inchworm", sets: 2, reps: "8 Wdh", tip: "Vorwärts laufen, Hände zu Boden, in Plank, zurück laufen. Ganzkörper-Vorbereitung." },
+      ]},
+      { name: "Haupttraining", exercises: [
+        { name: "Trap Bar Deadlift", sets: 4, reps: "5 Wdh", tip: "Rückenfreundlichste Deadlift-Variante: Griffe seitlich, aufrechter Oberkörper. Moderates Gewicht." },
+        { name: "Kettlebell Swing", sets: 4, reps: "10 Wdh", tip: "Hüft-Explosivität, kein Kniebeugen-Muster. KB zwischen Beinen hindurch, Hüfte schnell nach vorne schnellen." },
+        { name: "Farmers Walk", sets: 3, reps: "20 m", tip: "KH an den Seiten, aufrechte Haltung, Schulterblätter zusammen. Core-Stabilität und Griff." },
+        { name: "Pallof Press", sets: 3, reps: "10 Wdh/Seite", tip: "Anti-Rotation Core: Kabel auf Brusthöhe, nach vorne drücken und halten. Kein Drehen." },
+        { name: "Box Step-Up", sets: 3, reps: "10 Wdh/Seite", tip: "Ferse vollständig auf Box. Über das Standbein nach oben drücken, nicht hochspringen." },
+      ]},
+      { name: "Abschluss-Mobility", exercises: [
+        { name: "Hip Flexor + Quad Stretch", sets: 2, reps: "40 Sek/Seite", tip: "Ausfallschritt, hinteres Knie auf Boden, Oberkörper aufrecht. Knie des hinteren Beins nach hinten ziehen." },
+        { name: "Piriformis Stretch", sets: 2, reps: "40 Sek/Seite", tip: "Ischiasnerv entlasten. Knöchel auf Knie, sanft nach vorne lehnen." },
+        { name: "McKenzie Extension", sets: 2, reps: "10 Wdh", tip: "Auf dem Bauch, Hände unter Schultern hochdrücken. LWS-Abschluss nach Deadlift-Tag." },
+        { name: "90/90 Hip Stretch", sets: 2, reps: "60 Sek/Seite", tip: "Beide Beine im 90° Winkel. Zeit lassen, tief in die Hüfte entspannen." },
+      ]},
+    ]
+  }
+];
+
+let state = {
+  activeDay: 0,
+  completed: {},
+  setsDone: {},
+  history: [],
+  timerRunning: false,
+  timerStart: null,
+  timerElapsed: 0,
+  timerInterval: null,
+  streak: 0
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('training_state_v2');
+    if (saved) state = Object.assign(state, JSON.parse(saved));
+  } catch(e) {}
+}
+function saveState() {
+  try { localStorage.setItem('training_state_v2', JSON.stringify(state)); } catch(e) {}
+}
+function getKey(d, s, e) { return d + '-' + s + '-' + e; }
+
+function toggleExercise(d, s, e) {
+  const key = getKey(d, s, e);
+  state.completed[key] = !state.completed[key];
+  saveState();
+  renderDay();
+}
+
+function toggleSet(d, s, e, setIdx) {
+  const key = getKey(d, s, e);
+  if (!state.setsDone[key]) state.setsDone[key] = [];
+  state.setsDone[key][setIdx] = !state.setsDone[key][setIdx];
+  const exercise = PLAN[d].sections[s].exercises[e];
+  let allDone = true;
+  for (let i = 0; i < exercise.sets; i++) {
+    if (!state.setsDone[key][i]) { allDone = false; break; }
+  }
+  state.completed[key] = allDone;
+  saveState();
+  renderDay();
+}
+
+function toggleExpand(key) {
+  const card = document.getElementById('card-' + key);
+  if (card) card.classList.toggle('open');
+}
+
+function isDayDone(d) {
+  const day = PLAN[d];
+  return day.sections.every((sec, s) =>
+    sec.exercises.every((_, e) => !!state.completed[getKey(d, s, e)])
+  );
+}
+
+function renderTabs() {
+  const tabs = document.getElementById('day-tabs');
+  tabs.innerHTML = PLAN.map((d, i) => {
+    const isDone = isDayDone(i);
+    let cls = 'day-tab';
+    if (i === state.activeDay) cls += ' active';
+    else if (isDone) cls += ' done';
+    return '<button class="' + cls + '" data-day="' + i + '">' + d.short + ' · ' + d.title.split(' ')[0] + '</button>';
+  }).join('');
+  tabs.querySelectorAll('.day-tab').forEach(btn => {
+    btn.addEventListener('click', () => switchDay(parseInt(btn.dataset.day, 10)));
+  });
+}
+
+function switchDay(i) {
+  state.activeDay = i;
+  saveState();
+  renderTabs();
+  renderDay();
+  document.querySelector('.main').scrollTop = 0;
+}
+
+function renderDay() {
+  const day = PLAN[state.activeDay];
+  const d = state.activeDay;
+  let html = '';
+
+  const typeClass = { Kraft: 'tag-kraft', Mobility: 'tag-mobility', Athletik: 'tag-athletik' }[day.type] || '';
+  html += '<div class="day-hero"><div class="day-hero-tag ' + typeClass + '">' + day.type + '</div>' +
+    '<div class="day-hero-title">' + day.title + '</div>' +
+    '<div class="day-hero-sub">' + day.label + '</div></div>';
+
+  if (day.warn) {
+    html += '<div class="warn-box"><span class="warn-icon">⚠</span><span>' + day.warn + '</span></div>';
+  }
+
+  day.sections.forEach((sec, s) => {
+    html += '<div class="section-header">' + sec.name + '</div>';
+    sec.exercises.forEach((ex, e) => {
+      const key = getKey(d, s, e);
+      const done = !!state.completed[key];
+      const setsDone = state.setsDone[key] || [];
+      let setsHtml = '';
+      if (ex.sets > 1) {
+        setsHtml = '<div class="sets-label">Sätze abhaken</div><div class="sets-row">';
+        for (let i = 0; i < ex.sets; i++) {
+          setsHtml += '<button class="set-btn' + (setsDone[i] ? ' done' : '') + '" data-key="' + key + '" data-idx="' + i + '">S' + (i + 1) + '</button>';
+        }
+        setsHtml += '</div>';
+      }
+      html += '<div class="exercise-card' + (done ? ' completed' : '') + '" id="card-' + key + '">' +
+        '<div class="exercise-main" data-key="' + key + '">' +
+          '<div class="check-circle"><svg class="check-icon" viewBox="0 0 14 14" fill="none">' +
+            '<path d="M2.5 7L5.5 10L11.5 4" stroke="' + (done ? '#0f0f11' : 'white') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
+          '<div class="exercise-info"><div class="exercise-name">' + ex.name + '</div>' +
+            '<div class="exercise-meta">' + (ex.sets > 1 ? ex.sets + ' Sätze · ' : '') + ex.reps + '</div></div>' +
+          '<div class="expand-btn" data-expand="' + key + '">⌄</div>' +
+        '</div>' +
+        '<div class="exercise-detail">' + ex.tip + setsHtml + '</div>' +
+      '</div>';
+    });
+  });
+
+  document.getElementById('main-content').innerHTML = html;
+  attachExerciseListeners();
+}
+
+function attachExerciseListeners() {
+  document.querySelectorAll('.exercise-main').forEach(el => {
+    el.addEventListener('click', (ev) => {
+      if (ev.target.closest('.expand-btn')) return;
+      const [d, s, e] = el.dataset.key.split('-').map(Number);
+      toggleExercise(d, s, e);
+    });
+  });
+  document.querySelectorAll('.expand-btn').forEach(el => {
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      toggleExpand(el.dataset.expand);
+    });
+  });
+  document.querySelectorAll('.set-btn').forEach(el => {
+    el.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const [d, s, e] = el.dataset.key.split('-').map(Number);
+      toggleSet(d, s, e, parseInt(el.dataset.idx, 10));
+    });
+  });
+}
+
+function toggleTimer() {
+  const btn = document.getElementById('timer-btn');
+  if (!state.timerRunning) {
+    state.timerRunning = true;
+    state.timerStart = Date.now() - state.timerElapsed;
+    state.timerInterval = setInterval(updateTimerDisplay, 1000);
+    btn.classList.add('running');
+  } else {
+    clearInterval(state.timerInterval);
+    state.timerElapsed = Date.now() - state.timerStart;
+    state.timerRunning = false;
+    btn.classList.remove('running');
+  }
+}
+
+function updateTimerDisplay() {
+  const elapsed = Date.now() - state.timerStart;
+  const m = Math.floor(elapsed / 60000);
+  const s = Math.floor((elapsed % 60000) / 1000);
+  document.getElementById('timer-btn').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function finishWorkout() {
+  const d = state.activeDay;
+  const day = PLAN[d];
+  const elapsed = state.timerRunning ? Date.now() - state.timerStart : state.timerElapsed;
+  const minutes = Math.floor(elapsed / 60000);
+  const durationStr = minutes > 0 ? minutes + ' Min' : 'Keine Zeit gemessen';
+
+  state.history.unshift({
+    date: new Date().toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' }),
+    day: day.label,
+    dayTitle: day.title,
+    duration: durationStr
+  });
+  if (state.history.length > 50) state.history = state.history.slice(0, 50);
+
+  state.streak = (state.streak || 0) + 1;
+  document.getElementById('streak-num').textContent = state.streak;
+
+  clearInterval(state.timerInterval);
+  state.timerRunning = false;
+  state.timerElapsed = 0;
+  state.timerStart = null;
+  document.getElementById('timer-btn').textContent = '0:00';
+  document.getElementById('timer-btn').classList.remove('running');
+
+  day.sections.forEach((sec, s) => {
+    sec.exercises.forEach((_, e) => {
+      delete state.completed[getKey(d, s, e)];
+      delete state.setsDone[getKey(d, s, e)];
+    });
+  });
+
+  saveState();
+  showToast(day.label + ' abgeschlossen!');
+  renderDay();
+  renderTabs();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function openHistory() {
+  const list = document.getElementById('history-list');
+  if (!state.history || state.history.length === 0) {
+    list.innerHTML = '<div class="history-empty">Noch kein Training abgeschlossen.</div>';
+  } else {
+    list.innerHTML = state.history.map(h =>
+      '<div class="history-item"><div><div style="font-weight:600">' + h.day + ' – ' + h.dayTitle + '</div>' +
+      '<div class="history-date">' + h.date + ' · ' + h.duration + '</div></div>' +
+      '<span style="color:#52c97a;font-size:17px">✓</span></div>'
+    ).join('');
+  }
+  document.getElementById('history-overlay').classList.add('open');
+}
+function closeHistory() {
+  document.getElementById('history-overlay').classList.remove('open');
+}
+
+loadState();
+renderTabs();
+renderDay();
+document.getElementById('streak-num').textContent = state.streak || 0;
+
+document.getElementById('timer-btn').addEventListener('click', toggleTimer);
+document.getElementById('finish-btn').addEventListener('click', finishWorkout);
+document.getElementById('streak-badge').addEventListener('click', openHistory);
+document.getElementById('history-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'history-overlay') closeHistory();
+});
+</script>
+</body>
+</html>
